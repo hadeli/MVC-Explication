@@ -18,6 +18,9 @@ Comments and UI text are in French.
 
 ## Layout
 
+The root `index.php`, `login.php`, `register.php` are the students' starting point: an exact copy of
+`etapes/01-pages-classiques/`. Keep them identical to that folder (`diff` must be empty); never refactor them.
+
 Every step lives in its own complete, runnable folder under `etapes/NN-nom/` (01 to 10). Each folder has a
 short French `README.md` describing what changed from the previous step. Steps are built cumulatively:
 a change to an early step usually has to be propagated to all later steps.

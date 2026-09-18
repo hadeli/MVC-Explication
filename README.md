@@ -14,7 +14,15 @@ de l'étape précédente, et le site fonctionne à l'identique à la fin de chac
 
 ## Organisation
 
-Chaque étape est un projet complet et fonctionnel dans son propre dossier :
+À la racine du dépôt, `index.php`, `login.php` et `register.php` sont le **point de départ des élèves** :
+les trois pages classiques, identiques à celles de `etapes/01-pages-classiques/`. C'est sur ces fichiers
+que l'on travaille en suivant `PLAN.md`.
+
+```bash
+php -S localhost:8000      # depuis la racine, puis http://localhost:8000/index.php
+```
+
+Chaque étape corrigée est un projet complet et fonctionnel dans son propre dossier :
 
 ```
 etapes/
