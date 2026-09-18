@@ -1,6 +1,6 @@
 # Le MVC expliqué en diagrammes
 
-Ce document décrit l'architecture cible du projet (étape 9, avant le moteur de templates de l'étape 10) et suit une requête réelle de bout en bout.
+Ce document décrit l'architecture du projet à l'étape 9 (dossier `etapes/09-noyau/`), juste avant le moteur de templates de l'étape 10 et suit une requête réelle de bout en bout.
 Les diagrammes sont en Mermaid (rendus par GitHub et PhpStorm) avec une version texte en dessous.
 
 ---
@@ -168,8 +168,8 @@ sequenceDiagram
     UR->>DB: SELECT id, email, password FROM users WHERE email = ?
     DB-->>UR: ligne {id: 1, email, password: "$2y$..."}
     UR-->>AC: User(id=1, email=..., passwordHash=...)
-    AC->>AC: password_verify("motdepasse1", user->passwordHash) → true
-    AC->>AC: $_SESSION["utilisateur"] = {id: 1, email}
+    AC->>AC: user->verifierMotDePasse("motdepasse1") → true
+    AC->>RQ: setSession("utilisateur", {id: 1, email})
     AC->>RS: Response::redirect("/")
     RS-->>AC: Response(302, Location: /)
     AC-->>RT: Response
@@ -201,23 +201,33 @@ ou `.htaccess` sous Apache) envoie donc la requête à `public/index.php`.
 <?php
 declare(strict_types=1);
 
-require dirname(__DIR__) . '/autoload.php';   // 1. les classes se chargeront toutes seules
-
-session_start();                              // 2. une seule fois, pour tout le site
-
-use App\Core\{Database, Request, Router, View};
+use App\Controller\{AuthController, HomeController};
+use App\Core\{Database, Env, Request, Router, View};
 use App\Model\UserRepository;
 
-$pdo        = Database::connexion();          // 3. dépendances partagées (Database lit DB_DSN dans .env)
-$repository = new UserRepository($pdo);
-$view       = new View(dirname(__DIR__) . '/views');
+$racine = dirname(__DIR__);
 
-$router = new Router(require dirname(__DIR__) . '/config/routes.php');
+require $racine . '/autoload.php';            // 1. les classes se chargeront toutes seules
 
-$request  = Request::fromGlobals();           // 4. la requête devient un objet
-$response = $router->dispatch($request, [$repository, $view]);   // 5. le routeur trouve et appelle le contrôleur
+Env::charger($racine . '/.env');              // 2. configuration hors du code
+session_start();                              // 3. une seule fois, pour tout le site
 
-$response->send();                            // 6. un seul endroit qui écrit la sortie
+$repository = new UserRepository(Database::connexion($racine));    // 4. dépendances partagées
+$view       = new View($racine . '/views', ['utilisateurConnecte' => $_SESSION['utilisateur'] ?? null]);
+
+$router = new Router(
+    require $racine . '/config/routes.php',
+    [   // qui sait construire quel contrôleur
+        HomeController::class => fn() => new HomeController($view),
+        AuthController::class => fn() => new AuthController($repository, $view),
+    ],
+    $view,
+);
+
+$request  = Request::fromGlobals();           // 5. la requête devient un objet
+$response = $router->dispatch($request);      // 6. le routeur trouve et appelle le contrôleur
+
+$response->send();                            // 7. un seul endroit qui écrit la sortie
 ```
 
 **Étape 3 : `autoload.php`**
@@ -288,15 +298,15 @@ return [
 ```
 
 ```php
-public function dispatch(Request $request, array $dependances): Response
+public function dispatch(Request $request): Response
 {
     foreach ($this->routes as [$methode, $chemin, [$classe, $action]]) {
         if ($methode === $request->method && $chemin === $request->path) {
-            $controleur = new $classe(...$dependances);     // autoload.php charge AuthController ici
+            $controleur = ($this->fabriques[$classe])();    // autoload.php charge AuthController ici
             return $controleur->$action($request);
         }
     }
-    return Response::notFound();
+    return $this->view->render('404', ['chemin' => $request->path], 404);
 }
 ```
 
@@ -313,14 +323,15 @@ public function login(Request $request): Response
 
     $user = $this->repository->findByEmail($email);              // → Modèle
 
-    if ($user === null || !password_verify($password, $user->passwordHash)) {
+    if ($user === null || !$user->verifierMotDePasse($password)) {
         return $this->view->render('login', [                    // → Vue, statut 200
+            'titre'  => 'Connexion',
             'erreur' => 'Email ou mot de passe incorrect.',
             'email'  => $email,
         ]);
     }
 
-    $_SESSION['utilisateur'] = ['id' => $user->id, 'email' => $user->email];
+    $request->setSession('utilisateur', ['id' => $user->id, 'email' => $user->email]);
     return Response::redirect('/');                              // → Réponse 302
 }
 ```
@@ -336,7 +347,7 @@ public function findByEmail(string $email): ?User
     $stmt->execute(['email' => $email]);
     $ligne = $stmt->fetch(PDO::FETCH_ASSOC);
 
-    return $ligne ? new User((int) $ligne['id'], $ligne['email'], $ligne['password']) : null;
+    return $ligne ? $this->hydrater($ligne) : null;   // → new User(id, email, passwordHash)
 }
 ```
 
@@ -402,8 +413,9 @@ le résultat dans le layout commun.
 ```php
 public function render(string $vue, array $donnees = [], int $statut = 200): Response
 {
+    $donnees += $this->partage;                                   // ex. utilisateurConnecte
     $contenu = $this->capturer("$vue.php", $donnees);
-    $html    = $this->capturer('layout.php', ['contenu' => $contenu, 'titre' => $donnees['titre'] ?? '']);
+    $html    = $this->capturer('layout.php', $donnees + ['contenu' => $contenu]);
     return new Response($statut, $html);
 }
 

@@ -16,21 +16,31 @@ Comments and UI text are in French.
   engine (step 10) are hand-written too.
 - `.env` is gitignored; `.env.example` is versioned. Never put connection values back into PHP code once step 3 is done.
 
+## Layout
+
+Every step lives in its own complete, runnable folder under `etapes/NN-nom/` (01 to 10). Each folder has a
+short French `README.md` describing what changed from the previous step. Steps are built cumulatively:
+a change to an early step usually has to be propagated to all later steps.
+
+- Steps 01-06: pages at the folder root, run with `php -S localhost:8000` from the folder, URLs `/login.php` etc.
+- Steps 07-10: `public/` is the docroot, run with `php -S localhost:8000 -t public`, URLs `/login` etc.
+- Steps 03+: need `.env` (copy from `.env.example`). `verifier.sh` does this automatically.
+- Step 10 compiles templates into `cache/` (gitignored).
+
+Root-level docs: `README.md` (French, humans), `PLAN.md`, `MVC.md`, this file, and `verifier.sh`.
+
 ## Commands
 
-See also `README.md` (French, for humans): purpose, rules, roadmap, current step. Keep its "État actuel"
-and roadmap in sync with this file when a step is completed.
-
-Requires PHP >= 8 with `pdo_sqlite` (bundled by default).
-
 ```bash
-php -S localhost:8000          # run from the project root, then open http://localhost:8000/index.php
-php -l fichier.php             # syntax check a file
-rm database.sqlite             # reset the database (recreated automatically on first request)
+./verifier.sh 05                                        # smoke-test one step (starts php -S, runs curl checks)
+for n in 01 02 03 04 05 06 07 08 09 10; do ./verifier.sh $n; done
+php -l etapes/09-noyau/src/Core/Router.php              # syntax check a file
+diff -r etapes/04-vues etapes/05-modele                 # see exactly what a step changed
 ```
 
-There is no test suite. Verify behaviour manually or with `curl` against the built-in server
-(register, then login with `-c cookies`, then request `index.php` with `-b cookies`).
+There is no PHPUnit. `verifier.sh` is the test suite: it must print `=> OK` for every step after any change.
+Run it against every step from the one you touched onward. Its output is sometimes truncated by the RTK
+proxy hook; redirect to a file and `cat` it if lines are missing.
 
 ## Student material
 
@@ -41,20 +51,17 @@ There is no test suite. Verify behaviour manually or with `curl` against the bui
 When a step changes, keep `PLAN.md`, `MVC.md` and the roadmap below consistent. Code in `MVC.md` is the
 reference for naming (`App\Core\{Router,Request,Response,View,Database}`, `config/routes.php`, `views/layout.php`).
 
-## Current step: classic PHP pages (step 1)
+## Current state
 
-Three standalone pages at the root, each mixing PHP logic and HTML in one file:
+All 10 steps are implemented and pass `verifier.sh`. Reference naming for steps 9-10 (namespaces mirror
+`src/`): `App\Core\{Env,Database,Request,Response,View,Router,Template}`, `App\Controller\{AuthController,HomeController}`,
+`App\Model\{User,UserRepository}`, routes in `config/routes.php` as `[method, path, [class, action]]`,
+templates in `views/*.html` for step 10 (`views/*.php` + `views/layout.php` for step 9).
 
-- `index.php`: home, shows the logged-in user from `$_SESSION['utilisateur']`, handles `?action=logout`.
-- `register.php`: validation, uniqueness check, `password_hash`, insert into `users`.
-- `login.php`: `password_verify`, stores `['id', 'email']` in the session, redirects to `index.php`.
-
-Storage is SQLite via PDO in `database.sqlite` (gitignored). The `users` table is created with
-`CREATE TABLE IF NOT EXISTS` at the top of `login.php` and `register.php`.
-
-**The duplication is intentional.** The PDO connection block, `session_start()`, the `<nav>` and the
-HTML skeleton are copy-pasted across pages to expose the problems MVC solves. Do not "clean up" this
-step by extracting shared includes unless the user asks to move to the next step of the migration.
+Behaviour that every step must preserve (checked by `verifier.sh`): register with validation (email format,
+8-char minimum, confirmation, uniqueness), login with `password_verify`, session holding `['id','email']`,
+home page showing `Bonjour <strong>email</strong>`, logout, HTML escaping of user input. Steps 7+ also: 404
+for unknown paths and no access to files outside `public/`.
 
 ## Migration roadmap
 
@@ -71,5 +78,4 @@ step by extracting shared includes unless the user asks to move to the next step
 | 9 | `src/Core/`: `Router`, `Request`, `Response`, `View`, `Database` (reads `.env`) | Reusable core |
 | 10 | `src/Core/Template.php`: `{{ }}` escaped output, loops, conditions, layout blocks, compiled to `cache/` | Templating |
 
-Each step must leave the site fully working (register, login, home, logout). When a step is completed,
-update the "Current step" section above to describe the new layout and how a request flows through it.
+Each step must leave the site fully working (register, login, home, logout).

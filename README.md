@@ -12,22 +12,67 @@ de l'étape précédente, et le site fonctionne à l'identique à la fin de chac
 - **Comportement constant.** À la fin de chaque étape, le parcours inscription, connexion, accueil connecté,
   déconnexion doit fonctionner exactement comme avant.
 
-## Lancer le projet
+## Organisation
+
+Chaque étape est un projet complet et fonctionnel dans son propre dossier :
+
+```
+etapes/
+├── 01-pages-classiques/
+├── 02-includes/
+├── 03-env/
+├── 04-vues/
+├── 05-modele/
+├── 06-autoloader/
+├── 07-front-controller/
+├── 08-controleurs/
+├── 09-noyau/
+└── 10-templates/
+```
+
+Chaque dossier contient un `README.md` qui résume ce qui a changé par rapport à l'étape précédente.
+Comparer deux étapes consécutives montre exactement la transformation :
 
 ```bash
+diff -r etapes/04-vues etapes/05-modele
+```
+
+## Lancer une étape
+
+Étapes 1 à 6 (les pages sont à la racine du dossier) :
+
+```bash
+cd etapes/03-env
+cp .env.example .env        # à partir de l'étape 3
 php -S localhost:8000
 ```
 
 puis ouvrir http://localhost:8000/index.php.
 
-À partir de l'étape 7 (front controller), la commande devient :
+Étapes 7 à 10 (front controller, seul `public/` est exposé) :
 
 ```bash
+cd etapes/09-noyau
+cp .env.example .env
 php -S localhost:8000 -t public
 ```
 
-La base SQLite `database.sqlite` est créée automatiquement à la première requête. La supprimer remet
-les données à zéro.
+puis ouvrir http://localhost:8000/. Les URLs deviennent `/login`, `/register`, `/logout`.
+
+La base SQLite `database.sqlite` est créée automatiquement à la première requête dans le dossier de l'étape.
+La supprimer remet les données à zéro.
+
+## Vérifier une étape
+
+```bash
+./verifier.sh 05          # une étape
+for n in 01 02 03 04 05 06 07 08 09 10; do ./verifier.sh $n; done   # toutes
+```
+
+Le script démarre un serveur PHP sur le bon dossier, crée `.env` depuis `.env.example` si besoin, puis
+enchaîne : accueil non connecté, inscription refusée puis acceptée puis doublon, connexion refusée puis
+acceptée, accueil connecté, déconnexion, échappement HTML. À partir de l'étape 7 il vérifie aussi le 404 et
+l'inaccessibilité de la base par URL.
 
 ## Documents
 
@@ -35,6 +80,7 @@ les données à zéro.
 |---|---|---|
 | [`PLAN.md`](PLAN.md) | Élèves | Parcours guidé en 10 étapes, sous forme de questions. Aucune solution. |
 | [`MVC.md`](MVC.md) | Fin de parcours | Diagrammes de l'architecture cible et trace complète d'une requête `POST /login`. |
+| `etapes/*/README.md` | Élèves, après réflexion | Ce que chaque étape a changé et pourquoi. Ce sont les corrigés. |
 | [`CLAUDE.md`](CLAUDE.md) | Outils | Consignes pour Claude Code : contraintes, commandes, état courant. |
 
 ## Feuille de route
@@ -54,22 +100,4 @@ les données à zéro.
 
 ## État actuel
 
-**Étape 1 terminée.** Trois pages à la racine, chacune contenant sa propre connexion PDO, son `session_start()`,
-sa navigation et son HTML. La duplication est volontaire : c'est le problème que les étapes suivantes résolvent.
-
-| Page | Rôle |
-|---|---|
-| `index.php` | Accueil, affiche l'utilisateur connecté, gère `?action=logout` |
-| `register.php` | Validation, unicité de l'email, `password_hash`, insertion |
-| `login.php` | `password_verify`, session, redirection vers l'accueil |
-
-## Vérifier une étape à la main
-
-```bash
-php -S localhost:8000 &
-curl -s -d 'email=test@example.com&password=motdepasse1&confirmation=motdepasse1' http://localhost:8000/register.php | grep -o 'Votre compte a été créé'
-curl -s -c cookies -o /dev/null -w '%{http_code}\n' -d 'email=test@example.com&password=motdepasse1' http://localhost:8000/login.php   # attendu : 302
-curl -s -b cookies http://localhost:8000/index.php | grep -o 'Bonjour <strong>[^<]*'
-```
-
-Adapter les URLs à partir de l'étape 7 (`/register`, `/login`, `/`).
+**Les 10 étapes sont réalisées** et passent toutes le script de vérification.
