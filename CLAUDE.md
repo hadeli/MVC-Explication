@@ -21,14 +21,29 @@ Comments and UI text are in French.
 The root `index.php`, `login.php`, `register.php` are the students' starting point: an exact copy of
 `etapes/01-pages-classiques/`. Keep them identical to that folder (`diff` must be empty); never refactor them.
 
-Every step lives in its own complete, runnable folder under `etapes/NN-nom/` (01 to 10). Each folder has a
+Every step lives in its own complete, runnable folder under `etapes/NN-nom/` (01 to 13). Each folder has a
 short French `README.md` describing what changed from the previous step. Steps are built cumulatively:
 a change to an early step usually has to be propagated to all later steps.
 
 - Steps 01-06: pages at the folder root, run with `php -S localhost:8000` from the folder, URLs `/login.php` etc.
-- Steps 07-10: `public/` is the docroot, run with `php -S localhost:8000 -t public`, URLs `/login` etc.
+- Steps 07-13: `public/` is the docroot, run with `php -S localhost:8000 -t public`, URLs `/login` etc.
 - Steps 03+: need `.env` (copy from `.env.example`). `verifier.sh` does this automatically.
-- Step 10 compiles templates into `cache/` (gitignored).
+- Steps 10-13 compile templates into `cache/` (gitignored); step 13 also writes `cache/controleurs.php`.
+- Step 11 has no `config/routes.php` and no `AuthController`: one controller class per verb/path
+  (`Home`, `LoginForm`, `Login`, `RegisterForm`, `Register`, `Logout` + `Controller`), each implementing
+  `App\Core\ControllerInterface` (`public static function support(Request): bool`, `handle(Request): Response`).
+  All six extend `App\Core\AbstractController`, which implements `support()` from abstract static `verb()`
+  and `path()` (`static::` late static binding). the four `/login` and `/register` controllers share `App\Controller\FormTrait`
+  (`lireEmail()`, `rendreFormulaire()`, relies on the host's `$view`). `public/index.php` hands the Router
+  `[class => factory]`; the Router calls `$class::support()` and only instantiates the matching one.
+- Step 12: same controllers, but `public/index.php` names none of them. `App\Core\ControllerFinder::trouver(dir, ns)`
+  globs `src/Controller/*.php` and keeps instantiable classes implementing the interface (alphabetical order);
+  `App\Core\Container` (`creer(class)`) builds objects by reflecting constructor parameter types, with
+  `View` and `UserRepository` registered as shared services. Router takes `(class list, Container, View)`.
+- Step 13: `App\Core\ControllerCache::charger()` returns `[class => constructor type list]`, read from
+  `cache/controleurs.php` when fresh (cache mtime >= dir mtime and >= every `*.php` mtime), otherwise rebuilt via
+  `ControllerFinder::trouver()` + `Container::analyser()` (now public static) and written with `var_export`.
+  `Container` accepts the plans as second constructor argument; `index.php` no longer calls the finder.
 
 Root-level docs: `README.md` (French, humans), `PLAN.md`, `MVC.md`, this file, and `verifier.sh`.
 
@@ -36,7 +51,7 @@ Root-level docs: `README.md` (French, humans), `PLAN.md`, `MVC.md`, this file, a
 
 ```bash
 ./verifier.sh 05                                        # smoke-test one step (starts php -S, runs curl checks)
-for n in 01 02 03 04 05 06 07 08 09 10; do ./verifier.sh $n; done
+for n in 01 02 03 04 05 06 07 08 09 10 11 12 13; do ./verifier.sh $n; done
 php -l etapes/09-noyau/src/Core/Router.php              # syntax check a file
 diff -r etapes/04-vues etapes/05-modele                 # see exactly what a step changed
 ```
@@ -56,7 +71,7 @@ reference for naming (`App\Core\{Router,Request,Response,View,Database}`, `confi
 
 ## Current state
 
-All 10 steps are implemented and pass `verifier.sh`. Reference naming for steps 9-10 (namespaces mirror
+All 13 steps are implemented and pass `verifier.sh`. Reference naming for steps 9-10 (namespaces mirror
 `src/`): `App\Core\{Env,Database,Request,Response,View,Router,Template}`, `App\Controller\{AuthController,HomeController}`,
 `App\Model\{User,UserRepository}`, routes in `config/routes.php` as `[method, path, [class, action]]`,
 templates in `views/*.html` for step 10 (`views/*.php` + `views/layout.php` for step 9).
@@ -80,5 +95,8 @@ for unknown paths and no access to files outside `public/`.
 | 8 | `AuthController`, `HomeController` classes | Controller, constructor injection |
 | 9 | `src/Core/`: `Router`, `Request`, `Response`, `View`, `Database` (reads `.env`) | Reusable core |
 | 10 | `src/Core/Template.php`: `{{ }}` escaped output, loops, conditions, layout blocks, compiled to `cache/` | Templating |
+| 11 | `src/Core/ControllerInterface.php` (`static support(Request): bool`, `handle(Request): Response`); `AbstractController` (`verb()`, `path()`); `FormTrait`; one controller per verb/path; Router asks classes, instantiates only the match; `config/routes.php` removed | Interface, abstract class, trait, dynamic router |
+| 12 | `src/Core/ControllerFinder.php` (glob + `is_a`), `src/Core/Container.php` (constructor autowiring via Reflection); `index.php` names no controller | Discovery, reflection-based injection |
+| 13 | `src/Core/ControllerCache.php`: discovery + reflection results written to `cache/controleurs.php`, `filemtime`-invalidated (dir + files) | Caching a deterministic computation |
 
 Each step must leave the site fully working (register, login, home, logout).

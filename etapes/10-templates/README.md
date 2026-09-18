@@ -143,10 +143,12 @@ reconnaîtrez : compilation en PHP mis en cache, `{{ }}` échappé par défaut, 
 - **Un `cache/` non inscriptible** en production : la première requête échoue. Le dossier est créé
   automatiquement, mais les droits dépendent du serveur.
 
-## Fin du parcours
+## Ce qui reste imparfait
 
-Reprenez l'étape 1 et comparez avec ce dossier : même comportement, vérifié par le même script. Puis
-relisez la question 8 de l'étape 1 dans `PLAN.md`.
+Ajouter une page demande encore de toucher trois fichiers : le contrôleur, `config/routes.php` et la liste
+des fabriques dans `public/index.php`. Le routeur appelle `$controleur->$action()` sans qu'aucun contrat
+garantisse que la méthode existe. Et `AuthController` porte cinq actions dont certaines n'utilisent aucune de
+ses dépendances. Étape 11.
 
 ## Lancer et vérifier
 

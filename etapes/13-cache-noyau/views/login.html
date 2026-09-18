@@ -1,0 +1,25 @@
+{% extends "layout" %}
+
+{% block titre %}Connexion{% endblock %}
+
+{% block contenu %}
+<h1>Connexion</h1>
+
+{% if erreur != null %}
+    <p>{{ erreur }}</p>
+{% endif %}
+
+<form method="post" action="/login">
+    <p>
+        <label for="email">Email</label><br>
+        <input type="email" id="email" name="email" value="{{ email }}" required>
+    </p>
+    <p>
+        <label for="password">Mot de passe</label><br>
+        <input type="password" id="password" name="password" required>
+    </p>
+    <button type="submit">Se connecter</button>
+</form>
+
+<p>Pas encore de compte ? <a href="/register">Inscrivez-vous</a>.</p>
+{% endblock %}

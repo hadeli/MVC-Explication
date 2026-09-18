@@ -35,7 +35,10 @@ etapes/
 ├── 07-front-controller/
 ├── 08-controleurs/
 ├── 09-noyau/
-└── 10-templates/
+├── 10-templates/
+├── 11-interfaces/
+├── 12-routeur-autonome/
+└── 13-cache-noyau/
 ```
 
 Chaque dossier contient un `README.md` qui résume ce qui a changé par rapport à l'étape précédente.
@@ -57,7 +60,7 @@ php -S localhost:8000
 
 puis ouvrir http://localhost:8000/index.php.
 
-Étapes 7 à 10 (front controller, seul `public/` est exposé) :
+Étapes 7 à 13 (front controller, seul `public/` est exposé) :
 
 ```bash
 cd etapes/09-noyau
@@ -105,7 +108,10 @@ l'inaccessibilité de la base par URL.
 | 8 | `AuthController`, `HomeController` | Contrôleur, injection de dépendances |
 | 9 | `src/Core/` : `Router`, `Request`, `Response`, `View`, `Database` | Noyau réutilisable |
 | 10 | `src/Core/Template.php`, syntaxe `{{ }}`, compilation dans `cache/` | Templating |
+| 11 | `ControllerInterface`, `AbstractController` (`verb()`, `path()`), `FormTrait`, un contrôleur par verbe/chemin, routeur sans table de routes | Interface, classe abstraite, trait |
+| 12 | `ControllerFinder` balaye `src/Controller/`, `Container` construit par réflexion, plus aucun contrôleur nommé dans `index.php` | Découverte automatique, injection par réflexion |
+| 13 | `ControllerCache` écrit le résultat du balayage et de la réflexion dans `cache/controleurs.php`, invalidé par `filemtime` | Cache d'un calcul déterministe |
 
 ## État actuel
 
-**Les 10 étapes sont réalisées** et passent toutes le script de vérification.
+**Les 13 étapes sont réalisées** et passent toutes le script de vérification.

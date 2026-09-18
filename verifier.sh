@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Vérifie qu'une étape se comporte comme attendu : inscription, connexion, accueil connecté, déconnexion.
-# Usage : ./verifier.sh 03      (numéro de l'étape, 01 à 10)
+# Usage : ./verifier.sh 03      (numéro de l'étape, 01 à 13)
 set -u
 NUM="${1:?numero de l etape requis, ex: ./verifier.sh 04}"
 DOSSIER=$(ls -d "$(dirname "$0")"/etapes/"$NUM"-* 2>/dev/null | head -1)

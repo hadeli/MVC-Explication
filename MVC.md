@@ -501,3 +501,87 @@ Interdits :   Model ✗──► View      View ✗──► Model      Model �
 | Modèle | Porte les règles métier et parle à la base ; ignore le web. |
 | Vue | Transforme des données en HTML ; ignore d'où elles viennent. |
 | Response | Porte statut, en-têtes et corps ; envoyée une seule fois, à la fin. |
+
+---
+
+## 8. Variante de l'étape 11 : le routeur ne connaît plus que le contrat
+
+À l'étape 11, la table `config/routes.php` disparaît et `AuthController` est découpé en un contrôleur par
+couple verbe/chemin (`LoginFormController`, `LoginController`, `RegisterFormController`, `RegisterController`,
+`LogoutController`, plus `HomeController`). Tous respectent `App\Core\ControllerInterface` :
+
+```php
+interface ControllerInterface
+{
+    public static function support(Request $request): bool;   // posée à la classe, sans objet
+    public function handle(Request $request): Response;
+}
+```
+
+Les six héritent d'`App\Core\AbstractController`, qui écrit `support()` une fois à partir de deux méthodes
+abstraites statiques `verb()` et `path()` (`static::`, liaison statique tardive). Les quatre contrôleurs de
+formulaire partagent en plus `App\Controller\FormTrait` (`lireEmail()`, `rendreFormulaire()`).
+Le routeur, lui, ne connaît que l'interface.
+
+Le routeur reçoit `[classe => fabrique]`, vérifie au câblage que chaque classe implémente l'interface
+(`is_a($classe, ControllerInterface::class, true)`), puis :
+
+```php
+foreach ($this->fabriques as $classe => $fabrique) {
+    if ($classe::support($request)) {
+        return $fabrique()->handle($request);
+    }
+}
+```
+
+Le `POST /login` de la section 4 suit alors ce chemin : `HomeController::support()` et
+`LoginFormController::support()` répondent non sans qu'aucun objet soit construit, `LoginController::support()`
+répond oui, sa fabrique construit le seul contrôleur de la requête, `handle()` fait ce que faisait
+`AuthController::login()`. Le reste (modèle, vue, `Response`, `send()`) est identique. Seule la ligne « Router »
+du tableau ci-dessus change : *Demande à chaque classe de contrôleur si elle prend en charge la requête ;
+instancie la première qui dit oui et lui délègue.*
+
+---
+
+## 9. Variante de l'étape 12 : le routeur se sert lui-même
+
+À l'étape 12, `public/index.php` ne nomme plus aucun contrôleur. Deux classes du noyau s'en chargent :
+
+- `App\Core\ControllerFinder::trouver($dossier, $namespace)` balaye `src/Controller/*.php`, déduit un nom de
+  classe de chaque fichier (la convention d'`autoload.php` lue à l'envers) et garde celles qui implémentent
+  `ControllerInterface` et sont instanciables. `FormTrait` est ignoré.
+- `App\Core\Container::creer($classe)` construit un objet en lisant, par réflexion, les types des paramètres
+  de son constructeur, et en les demandant récursivement au conteneur. `View` et `UserRepository` sont
+  enregistrés comme services partagés parce qu'ils ont besoin de valeurs qu'on ne peut pas deviner.
+
+```php
+$container = new Container([View::class => $view, UserRepository::class => $repository]);
+$router = new Router(ControllerFinder::trouver($racine . '/src/Controller', 'App\\Controller'), $container, $view);
+```
+
+Le `POST /login` de la section 4 : le finder renvoie les six classes dans l'ordre alphabétique des fichiers,
+`LoginController::support()` répond oui en deuxième position, le conteneur lit son constructeur
+(`UserRepository`, `View`), fournit les deux services et appelle `new LoginController(...)`. `handle()` fait le
+reste, inchangé depuis l'étape 11. La ligne « Router » du tableau de la section 7 devient : *Demande à chaque
+classe trouvée si elle prend en charge la requête ; fait construire la première qui dit oui et lui délègue.*
+
+---
+
+## 10. Variante de l'étape 13 : le résultat de la découverte est mis en cache
+
+À l'étape 13, `App\Core\ControllerCache::charger()` renvoie `[classe => types du constructeur]` : relu par
+`require cache/controleurs.php` quand il est frais (date du cache ≥ date du dossier `src/Controller/` et ≥ date
+de chacun de ses fichiers), sinon reconstruit par `ControllerFinder::trouver()` + `Container::analyser()` et
+écrit avec `var_export()`. Le `Container` reçoit ces plans et ne fait de réflexion que pour une classe qui
+n'y figure pas.
+
+```php
+$plans = (new ControllerCache($racine . '/src/Controller', 'App\\Controller', $racine . '/cache/controleurs.php'))->charger();
+$container = new Container([View::class => $view, UserRepository::class => $repository], $plans);
+$router = new Router(array_keys($plans), $container, $view);
+```
+
+Le `POST /login` de la section 4, cache chaud : huit `stat`, un `require`, la boucle `support()`, puis
+`new LoginController($repository, $view)` sans réflexion. Le routeur et les contrôleurs sont ceux des
+étapes 11 et 12, inchangés. Ce que le cache ne supprime pas : chaque contrôleur est toujours chargé par
+l'autoloader pour répondre à `support()`.

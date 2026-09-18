@@ -430,6 +430,206 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 
 ---
 
+## Étape 11 : une interface pour les contrôleurs
+
+**Observer**
+
+1. Vous voulez ajouter une page `/profil`. Listez tous les fichiers que vous devez modifier. Combien y en
+   a-t-il ? Lesquels ne contiennent aucune logique métier ?
+2. Dans `config/routes.php`, remplacez `'loginForm'` par `'loginFrom'`. À quel moment l'erreur se manifeste-t-elle ?
+   Qui la découvre : vous, ou un visiteur ?
+3. Regardez la ligne `$controleur->$action($request)` dans `Router::dispatch()`. Que sait le routeur de
+   `$controleur` ? Qu'est-ce qui lui garantit que `$action` existe et renvoie une `Response` ?
+4. `AuthController::logout()` reçoit un `UserRepository` et une `View` par le constructeur. S'en sert-elle ?
+   Combien d'actions différentes cette classe porte-t-elle ? Que dit ce chiffre sur sa responsabilité ?
+
+**Concevoir**
+
+5. Renversez la question : au lieu que le routeur sache quel contrôleur répond à quelle requête, et si chaque
+   contrôleur savait dire lui-même s'il prend en charge une requête ? Quelle question minimale le routeur
+   devrait-il pouvoir poser à n'importe quel contrôleur ? Et quel ordre lui donner ensuite ?
+6. Cherchez `interface` dans la documentation PHP. Qu'est-ce qu'une interface contient ? Qu'est-ce qu'elle ne
+   contient pas ? Que se passe-t-il si une classe écrit `implements` et oublie une méthode ?
+7. Écrivez la signature des deux méthodes de votre interface, avec leurs types de paramètre et de retour.
+   Pourquoi le type de retour est-il important ici, précisément pour le routeur ?
+8. Si un contrôleur ne gère qu'**un** couple verbe/chemin, combien de classes vous faut-il ? Pour chacune,
+   listez ses dépendances réelles. Comparez avec ce qu'`AuthController` recevait.
+9. Pour demander à un contrôleur « prends-tu cette requête ? », faut-il l'avoir construit, avec sa base de
+   données et sa vue ? Cherchez ce qu'est une méthode `static`, et si une interface peut en déclarer une.
+   Comment appelle-t-on une méthode statique d'une classe dont le nom est dans une variable ?
+10. Le routeur reçoit des noms de classes, pas des objets. Comment lui garantir, avant la première requête,
+    que chaque nom désigne bien une classe qui respecte le contrat ? Cherchez `is_a()` et son troisième
+    paramètre.
+11. Où vont les routes une fois `config/routes.php` supprimé ? Quelle classe connaît `POST /login` ?
+    Un contrôleur pourrait-il décider de répondre pour une autre raison qu'un chemin exact ?
+12. Interface ou classe abstraite ? Listez ce que chacune permet et interdit. Le routeur a-t-il besoin de code
+    partagé, ou d'une promesse ?
+13. Une fois vos six contrôleurs écrits, comparez leurs `support()`. Que se répète-t-il ? Si une classe
+    abstraite écrivait `support()` une seule fois, de quelles informations aurait-elle besoin de chaque fille,
+    et sous quelle forme (constante, méthode abstraite, propriété) ? Ces informations peuvent-elles être
+    statiques ?
+14. Dans cette classe abstraite, quelle différence entre `self::path()` et `static::path()` ? Cherchez
+    « late static binding ». Lequel des deux appelle la méthode de la classe fille ?
+15. Les quatre contrôleurs de `/login` et `/register` affichent un formulaire avec un titre et un email, et les
+    deux en POST lisent cet email. Ce code doit-il aller dans la classe abstraite ? Qu'en penseraient
+    `HomeController` et `LogoutController` ? Cherchez ce qu'est un `trait` et ce qui le distingue d'une classe
+    parente.
+
+**Réaliser**
+
+16. Créez `src/Core/ControllerInterface.php`. Découpez `AuthController` en une classe par action, chacune
+    implémentant l'interface, chacune ne recevant que ce dont elle a besoin. Réécrivez `Router` pour qu'il
+    n'ait plus besoin de table de routes et n'instancie que le contrôleur qui répond. Supprimez `config/`.
+    Le script de vérification doit toujours passer.
+17. Créez `src/Core/AbstractController.php` qui implémente `support()` à partir de deux méthodes abstraites
+    statiques `verb()` et `path()`. Faites-en hériter vos contrôleurs. Puis un trait pour le code commun aux
+    quatre contrôleurs de formulaire. Le routeur n'a pas dû changer d'une ligne : vérifiez-le.
+
+**Vérifier**
+
+18. Retirez `implements ControllerInterface` d'un contrôleur sans toucher à ses méthodes. Que se passe-t-il, et
+    à quel moment ? Pourquoi PHP refuse-t-il alors que les méthodes existent ?
+19. Ajoutez un `echo static::class` dans un constructeur de contrôleur, visitez `/login`. Combien de
+    constructeurs s'exécutent ? Faites la même chose dans `support()`. Combien d'appels ?
+20. Remplacez `static::` par `self::` dans `AbstractController::support()`. Que dit PHP ? À quel moment ?
+21. Utilisez votre trait dans `LogoutController`, qui n'a pas de propriété `$view`, et appelez sa méthode de
+    rendu. À quel moment l'erreur apparaît-elle ? Comparez avec la question 18. Que peut déclarer un trait
+    pour exiger ce dont il a besoin ?
+22. Écrivez, dans un script en ligne de commande, un contrôleur factice qui répond `ok` sur `/test`. Donnez-le
+    seul au routeur. Pouvez-vous tester le routeur sans aucun vrai contrôleur, sans base de données, sans
+    serveur web ? Pourquoi une classe anonyme ne suffit-elle plus ?
+23. Faites répondre `true` à deux contrôleurs pour la même requête. Lequel gagne ? Est-ce visible quelque part ?
+
+**Prendre du recul**
+
+24. Qu'avez-vous gagné en ajoutant l'interface ? Qu'avez-vous perdu par rapport à une table de routes lisible
+    d'un coup d'œil ? Six petites classes ou deux grosses : quels critères pour trancher ?
+25. Interface, classe abstraite, trait : pour chacun, écrivez en une phrase ce qu'il partage (un contrat, une
+    implémentation, du code) et avec qui. Pourquoi le routeur ne dépend-il que du premier ?
+26. Cherchez `RequestHandlerInterface` (PSR-15). Comparez sa méthode `handle()` avec la vôtre. Pourquoi des
+    projets qui ne se connaissent pas arrivent-ils à la même signature ?
+27. Reprenez la liste de la question 1 pour la page `/profil`. Combien de fichiers maintenant ? Lesquels PHP
+    vérifie-t-il pour vous ?
+
+---
+
+## Étape 12 : un routeur autonome
+
+**Observer**
+
+1. Ouvrez `public/index.php`. Combien de fois le nom `LoginController` y apparaît-il ? Que se passe-t-il si
+   vous créez un `ProfilController` parfaitement correct sans toucher à ce fichier ? Une erreur ? Laquelle ?
+2. Comparez la ligne `fn() => new LoginController($repository, $view)` avec le constructeur de
+   `LoginController`. Quelle information la ligne contient-elle que le constructeur ne dit pas déjà ?
+3. Listez les fichiers de `src/Controller/`. Qu'ont-ils en commun dans leur nom et leur emplacement ?
+   Relisez `autoload.php` de l'étape 6 : que fait-il d'un nom de classe ? Pourrait-on faire l'inverse ?
+
+**Concevoir**
+
+4. À partir de `src/Controller/LoginController.php`, comment obtenir la chaîne `App\Controller\LoginController` ?
+   Cherchez `glob()` et `basename()`. Une fois le nom obtenu, comment vérifier que c'est bien un contrôleur, sans
+   l'instancier ? Relisez ce que fait le troisième paramètre d'`is_a()`.
+5. `FormTrait.php` est dans le même dossier. Que renvoie `is_a('App\Controller\FormTrait', ControllerInterface::class, true)` ?
+   Et si un élève dépose une classe abstraite dans ce dossier ?
+6. Pour construire `LoginController`, il faut savoir qu'il attend un `UserRepository` puis une `View`. Où cette
+   information est-elle écrite ? Cherchez `ReflectionClass::getConstructor()` et `ReflectionParameter::getType()`.
+   Du code PHP peut-il lire les types d'un autre code PHP ?
+7. Le constructeur de `View` attend deux chemins (`string`). Peut-on deviner un `string` ? Que doit-on faire des
+   objets qu'on ne sait pas deviner ? Faut-il les construire une fois ou à chaque demande ?
+8. Si `LoginController` avait besoin d'un `Mailer` qui lui-même a besoin d'une `View`, comment votre
+   constructeur d'objets doit-il s'y prendre ? Le mot que vous cherchez est « récursif ». Quel danger ?
+9. Qui doit balayer le dossier : le routeur, ou une classe à part ? Qui doit construire les objets : le routeur,
+   ou une classe à part ? Combien de responsabilités le routeur aurait-il sinon ?
+
+**Réaliser**
+
+10. Créez une classe qui liste les contrôleurs d'un dossier, et une classe qui construit un objet à partir des
+    types de son constructeur, avec une liste d'objets déjà construits. Réécrivez `Router` pour qu'il reçoive
+    des noms de classes et délègue la construction. `public/index.php` ne doit plus nommer aucun contrôleur.
+    Le script de vérification doit toujours passer. Les contrôleurs n'ont pas dû changer.
+
+**Vérifier**
+
+11. Créez `src/Controller/ProfilController.php` qui répond `GET /profil` avec un texte. Rechargez. Combien de
+    fichiers avez-vous modifiés ?
+12. Ajoutez `string $nom` au constructeur d'un contrôleur. Que se passe-t-il, et à quel moment : au balayage,
+    au `support()`, ou à la construction ? Le message vous dit-il quoi faire ?
+13. Renommez `LoginController.php` en `ZLoginController.php` sans changer la classe à l'intérieur. Que se
+    passe-t-il ? Pourquoi ? Que dit cette expérience sur la convention de nommage ?
+14. Créez deux contrôleurs qui répondent tous deux à `GET /doublon`. Lequel gagne ? Qu'est-ce qui a décidé ?
+    Comparez avec la question 23 de l'étape 11.
+
+**Prendre du recul**
+
+15. `src/Controller/` est devenu de la configuration : ce qui s'y trouve répond. Est-ce un progrès ou un risque ?
+    Dans quels cas préféreriez-vous une liste explicite ?
+16. Le dossier est balayé et les constructeurs sont lus à chaque requête. Relisez l'étape 10 : quelle technique
+    y a-t-on utilisée pour ne pas refaire un travail coûteux à chaque fois ? S'appliquerait-elle ici ?
+17. Cherchez « autowiring » et « service discovery » dans la documentation de Symfony, ou « automatic
+    injection » dans celle de Laravel. Qu'ont-ils prévu que vous n'aviez pas imaginé ?
+
+---
+
+## Étape 13 : mettre le noyau en cache
+
+**Observer**
+
+1. Ajoutez un `echo` dans `ControllerFinder::trouver()` et un autre dans `Container::creer()` juste avant la
+   réflexion. Rechargez trois fois `/login`. Combien d'affichages ? Le résultat de ces calculs a-t-il changé
+   entre les trois requêtes ?
+2. Combien de fichiers PHP sont chargés par l'autoloader pour servir `GET /` ? Ajoutez un `echo` dans
+   `autoload.php` pour compter. Combien seraient nécessaires ?
+3. Relisez `Template` (étape 10) : comment décide-t-il qu'un template compilé est périmé ? Quelle est la
+   « source » et quel est le « compilé » ? Quels seraient leurs équivalents pour le balayage des contrôleurs ?
+
+**Concevoir**
+
+4. Qu'est-ce qui, exactement, doit être mis en cache : la liste des classes ? Les types de leurs constructeurs ?
+   Le résultat de `support()` ? Pour chaque réponse, demandez-vous de quoi elle dépend : des fichiers, ou de
+   la requête ?
+5. Sous quelle forme écrire ce résultat pour qu'il soit le plus rapide à relire ? Comparez `json_encode`,
+   `serialize` et `var_export` suivi d'un `require`. Lequel donne un fichier lisible par un humain **et** relu
+   par PHP sans rien parser ?
+6. Quand le cache est-il périmé ? Faites la liste des événements qui doivent le régénérer : un fichier ajouté,
+   supprimé, renommé, modifié. Cherchez ce que la date de modification d'un **dossier** enregistre, et ce
+   qu'elle n'enregistre pas. Une seule comparaison de dates suffit-elle ?
+7. `Container` fait la réflexion à l'intérieur de `creer()`. Pour la mettre en cache, il faut pouvoir l'appeler
+   depuis l'extérieur, sans construire d'objet. Que faut-il changer à sa signature ? Le `Container` doit-il
+   encore savoir faire la réflexion lui-même une fois le cache en place ?
+8. Qui est responsable du cache : le finder, le conteneur, le routeur, ou une classe à part ? Qu'est-ce que
+   cette classe doit connaître ? Qu'est-ce qu'elle ne doit surtout pas connaître ?
+
+**Réaliser**
+
+9. Créez une classe qui écrit dans `cache/` le résultat du balayage et de l'analyse des constructeurs, et
+   qui le relit tant qu'il est frais. Le conteneur doit accepter ce résultat tout fait. `public/index.php`
+   ne doit plus appeler le finder. Le script de vérification doit toujours passer, cache vide comme cache plein.
+
+**Vérifier**
+
+10. Ouvrez le fichier généré. Est-il lisible ? Retrouvez-y le constructeur de `LoginController`.
+11. Reprenez les `echo` de la question 1. Rechargez trois fois. Combien d'affichages maintenant ?
+12. Ajoutez `ProfilController.php`, rechargez : est-il dans le cache ? Ajoutez un paramètre à un constructeur,
+    rechargez : le cache a-t-il changé ? Supprimez un contrôleur : et là ?
+13. Modifiez le fichier généré à la main, rechargez. Que se passe-t-il ? Est-ce que ça vous rappelle une
+    question de l'étape 10 ?
+14. Reprenez la question 2. Combien de fichiers l'autoloader charge-t-il pour `GET /` maintenant ? Le cache
+    a-t-il changé ce nombre ? Pourquoi ?
+
+**Prendre du recul**
+
+15. Qu'est-ce qui, dans une requête, coûte encore quelque chose et ne dépend pas de la requête ? Pour
+    l'éviter, que faudrait-il mettre dans le cache en plus de la liste des classes ? À quoi ressemblerait ce
+    fichier ? Ressemble-t-il à quelque chose que vous avez supprimé à l'étape 11 ?
+16. La vérification de fraîcheur coûte un `stat` par fichier à chaque requête. En production, où le code ne
+    change qu'au déploiement, est-elle utile ? Cherchez `cache:warmup` (Symfony) ou `route:cache` (Laravel) :
+    quand ces frameworks construisent-ils leur cache, et le vérifient-ils ensuite ?
+17. Vous avez maintenant deux caches (`Template` et `ControllerCache`) qui font la même chose : un calcul
+    déterministe, une comparaison de dates, un fichier PHP. Qu'est-ce qui pourrait être partagé entre les
+    deux ? Est-ce que ça vaudrait la peine ?
+
+---
+
 ## Pour finir
 
 Reprenez vos notes de la question 8 de l'étape 1, celle où vous avez formulé le problème en une phrase.

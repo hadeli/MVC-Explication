@@ -1,0 +1,35 @@
+{% extends "layout" %}
+
+{% block titre %}Inscription{% endblock %}
+
+{% block contenu %}
+<h1>Inscription</h1>
+
+{% if succes %}
+    <p>Votre compte a été créé. <a href="/login">Connectez-vous</a>.</p>
+{% else %}
+    {% if erreurs %}
+        <ul>
+            {% for erreur in erreurs %}
+                <li>{{ erreur }}</li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    <form method="post" action="/register">
+        <p>
+            <label for="email">Email</label><br>
+            <input type="email" id="email" name="email" value="{{ email }}" required>
+        </p>
+        <p>
+            <label for="password">Mot de passe</label><br>
+            <input type="password" id="password" name="password" required>
+        </p>
+        <p>
+            <label for="confirmation">Confirmation du mot de passe</label><br>
+            <input type="password" id="confirmation" name="confirmation" required>
+        </p>
+        <button type="submit">S'inscrire</button>
+    </form>
+{% endif %}
+{% endblock %}
