@@ -85,7 +85,61 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 
 ---
 
-## Étape 3 : séparer ce qu'on calcule de ce qu'on affiche
+## Étape 3 : sortir les secrets du code
+
+**Observer**
+
+1. Ouvrez `includes/db.php`. Que contient-il qui n'a rien à voir avec du code ? Aujourd'hui c'est un simple
+   chemin vers un fichier SQLite. Imaginez la même ligne avec un hôte MySQL, un utilisateur et un mot de passe.
+2. Le projet est partagé sur un dépôt Git avec toute la classe. Qui peut lire ce fichier ? Qui pourrait le lire
+   dans un an, si le dépôt devient public ? Effacer la ligne dans un commit suivant suffit-il ?
+3. Votre camarade travaille sur Windows avec MySQL, vous sur Linux avec SQLite. Comment faire tourner le même
+   code sur les deux machines sans que chacun modifie `db.php` et se retrouve avec un conflit à chaque `git pull` ?
+
+**Concevoir**
+
+4. On veut séparer ce qui est du **code** (identique pour tout le monde) de ce qui est de la **configuration**
+   (propre à chaque machine). Listez tout ce qui, dans le projet, relève de la configuration. Y a-t-il
+   autre chose que la base de données ?
+5. Un fichier `.env` à la racine contient des lignes `CLE=valeur`. Il n'est pas versionné. Comment le code
+   sait-il alors quelles clés il doit attendre ? Que fournir au camarade qui clone le projet pour la première fois ?
+   Cherchez ce qu'est un fichier `.env.example`.
+6. Il faut lire ce fichier et rendre ses valeurs accessibles au code. Écrivez d'abord la signature de la fonction
+   qui s'en charge. Que retourne-t-elle ? Où stocker les valeurs : dans un tableau, dans `$_ENV`, via `putenv()` ?
+   Cherchez la différence entre ces options.
+7. Écrivez sur papier ce que doit faire votre lecteur pour chacune de ces lignes :
+   ```
+   # ceci est un commentaire
+   DB_DSN=sqlite:database.sqlite
+
+   DB_PASSWORD=
+   APP_NAME="Mon appli"
+   ```
+   Que faire d'une ligne sans `=` ? D'une clé déjà définie par le système ?
+8. Que doit-il se passer si le fichier `.env` est absent ? Continuer avec des valeurs par défaut, ou s'arrêter
+   avec un message clair ? Quelle option évite les pires surprises en production ?
+
+**Réaliser**
+
+9. Créez `.env.example` (versionné), `.env` (ignoré par Git), et un fichier `includes/env.php` qui charge les
+   variables. `includes/db.php` ne doit plus contenir aucune valeur en dur.
+
+**Vérifier**
+
+10. Lancez `git status`. Le fichier `.env` apparaît-il ? S'il apparaît, corrigez avant de continuer.
+11. Supprimez `.env` et rechargez la page. Que se passe-t-il ? Le message vous dit-il quoi faire ?
+12. Changez le chemin de la base dans `.env` uniquement. Le site utilise-t-il bien la nouvelle base, sans
+    qu'aucun fichier PHP n'ait été modifié ?
+
+**Prendre du recul**
+
+13. La règle « la configuration vient de l'environnement, jamais du code » a un nom et fait partie d'une liste
+    de douze principes pour les applications web. Trouvez-la. Quels autres principes de cette liste
+    votre projet respecte-t-il déjà, sans le savoir ?
+
+---
+
+## Étape 4 : séparer ce qu'on calcule de ce qu'on affiche
 
 **Observer**
 
@@ -124,7 +178,7 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 
 ---
 
-## Étape 4 : isoler l'accès aux données
+## Étape 5 : isoler l'accès aux données
 
 **Observer**
 
@@ -157,11 +211,11 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 **Prendre du recul**
 
 10. Vous avez maintenant une Vue et un Modèle. Qu'est-ce qui reste dans `login.php` ? Trouvez un nom
-    pour ce rôle. Ne cherchez pas encore la réponse : vous la vérifierez à l'étape 7.
+    pour ce rôle. Ne cherchez pas encore la réponse : vous la vérifierez à l'étape 8.
 
 ---
 
-## Étape 5 : charger les classes automatiquement
+## Étape 6 : charger les classes automatiquement
 
 **Observer**
 
@@ -203,7 +257,7 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 
 ---
 
-## Étape 6 : un seul point d'entrée
+## Étape 7 : un seul point d'entrée
 
 **Observer**
 
@@ -242,7 +296,7 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 
 ---
 
-## Étape 7 : les contrôleurs
+## Étape 8 : les contrôleurs
 
 **Observer**
 
@@ -265,13 +319,13 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 **Réaliser**
 
 7. Créez `src/Controller/AuthController.php` et `src/Controller/HomeController.php`. Les anciens fichiers
-   d'action disparaissent. Votre autoloader de l'étape 5 ne doit pas avoir besoin d'être modifié.
+   d'action disparaissent. Votre autoloader de l'étape 6 ne doit pas avoir besoin d'être modifié.
 
 **Vérifier**
 
 8. Décrivez à voix haute le chemin d'une requête `POST /login` depuis le navigateur jusqu'au HTML renvoyé.
    Nommez chaque fichier traversé, dans l'ordre. Faites-le sans regarder le code.
-9. Retournez à la question 10 de l'étape 4. Le nom que vous aviez proposé correspond-il ?
+9. Retournez à la question 10 de l'étape 5. Le nom que vous aviez proposé correspond-il ?
 
 **Prendre du recul**
 
@@ -280,7 +334,7 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
 
 ---
 
-## Étape 8 : extraire le noyau
+## Étape 9 : extraire le noyau
 
 **Observer**
 
@@ -298,7 +352,7 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
    les représenter, et à quel moment unique les envoyer ?
 5. Toutes vos vues répètent le même squelette HTML. Comment une classe `View` pourrait-elle gérer un
    « layout » commun dans lequel s'insère chaque vue ? Dans quel ordre faut-il exécuter la vue et le layout ?
-6. Le `Router` de l'étape 7 est un tableau et une boucle. Qu'est-ce qui changerait si on en faisait une classe ?
+6. Le `Router` de l'étape 8 est un tableau et une boucle. Qu'est-ce qui changerait si on en faisait une classe ?
    Quelles méthodes exposerait-elle ?
 
 **Réaliser**
@@ -319,6 +373,60 @@ Vous disposez de trois fichiers : `index.php`, `login.php`, `register.php`. Ne m
     en plus complet ? Ouvrez le code source d'un routeur populaire : reconnaissez-vous vos propres idées ?
 11. Le MVC a un coût : plus de fichiers, plus d'indirections, plus de choses à comprendre avant d'écrire une
     ligne. Dans quel type de projet ce coût n'en vaut-il pas la peine ? Répondre « jamais » n'est pas une réponse.
+
+---
+
+## Étape 10 : un moteur de templates
+
+**Observer**
+
+1. Ouvrez vos vues. Combien de fois écrivez-vous `<?= htmlspecialchars(...) ?>` ? Que se passe-t-il si vous
+   l'oubliez une seule fois sur une donnée saisie par l'utilisateur ? Essayez : inscrivez-vous avec l'email
+   `<script>alert(1)</script>@test.fr` et affichez-le quelque part sans échappement.
+2. Comparez `<?php foreach ($erreurs as $erreur): ?>` et `<?php endforeach; ?>` avec ce qu'un intégrateur HTML
+   non développeur pourrait lire. Où est la frontière entre « un peu de PHP dans la vue » et « trop » ?
+3. Le layout de l'étape 9 gère un seul emplacement, `$contenu`. Comment feriez-vous pour qu'une vue puisse
+   aussi injecter un `<title>` différent, ou un script en bas de page ?
+
+**Concevoir**
+
+4. Un moteur de templates transforme une syntaxe simplifiée en PHP. Décidez de la vôtre : par exemple
+   `{{ variable }}` pour afficher avec échappement et `{% for x in liste %}` pour boucler. Écrivez trois
+   templates fictifs avec cette syntaxe avant d'écrire une ligne de moteur. La syntaxe est-elle agréable ?
+   Ambiguë quelque part ?
+5. Deux stratégies : interpréter le template à chaque requête, ou le **compiler** une fois en fichier PHP
+   ordinaire puis inclure ce fichier. Quels avantages à compiler ? Comment savoir si le fichier compilé est
+   périmé par rapport au template source ? Cherchez `filemtime()`.
+6. `{{ variable }}` doit devenir `<?= htmlspecialchars($variable) ?>`. Quelle fonction PHP permet de faire
+   cette transformation sur tout un fichier d'un coup ? Écrivez l'expression régulière sur papier avant de la
+   tester.
+7. Échapper par défaut, c'est plus sûr. Mais parfois on veut afficher du HTML volontairement. Quelle syntaxe
+   choisir pour dire « ne pas échapper » ? Pourquoi est-il important que ce soit l'exception qui demande
+   un effort, et pas l'inverse ?
+8. Comment gérer l'héritage : un template `home.html` qui « étend » `layout.html` et remplit des blocs nommés ?
+   Dans quel ordre exécuter l'enfant et le parent ? Cette question ressemble-t-elle à la question 5 de l'étape 9 ?
+
+**Réaliser**
+
+9. Créez `src/Core/Template.php` avec au minimum : affichage échappé, affichage brut, condition, boucle,
+   et un layout avec blocs. Les fichiers compilés vont dans un dossier `cache/` ignoré par Git. Réécrivez
+   les vues dans la nouvelle syntaxe. `Core\View` devient un simple adaptateur ou disparaît.
+
+**Vérifier**
+
+10. Refaites le test de la question 1 avec l'email piégé. Le script s'exécute-t-il encore ?
+11. Modifiez un template, rechargez : le changement apparaît-il ? Regardez dans `cache/` : le fichier compilé
+    a-t-il été régénéré ? Modifiez maintenant le fichier compilé à la main, rechargez : que se passe-t-il ?
+    Est-ce le comportement que vous vouliez ?
+12. Ouvrez un template compilé. Est-il lisible ? Si un message d'erreur PHP pointe vers une ligne du fichier
+    compilé, l'élève saura-t-il retrouver la ligne du template source ?
+
+**Prendre du recul**
+
+13. Votre moteur ressemble-t-il à un outil connu ? Cherchez Twig ou Blade et comparez trois choses : la syntaxe,
+    la gestion de l'échappement, et l'héritage de templates. Qu'ont-ils prévu que vous n'aviez pas imaginé ?
+14. Vous avez ajouté une couche entre le développeur et le HTML final. Qu'avez-vous gagné en sécurité et en
+    lisibilité ? Qu'avez-vous perdu en simplicité et en débogage ? À quel moment un projet justifie ce compromis ?
 
 ---
 

@@ -11,10 +11,15 @@ Comments and UI text are in French.
 ## Hard constraints
 
 - **No Composer, ever.** No `composer.json`, no `vendor/`. Autoloading is done by a hand-written
-  `autoload.php` using `spl_autoload_register` (PSR-4 style mapping `App\` -> `src/`), introduced at step 5.
-- No external libraries or frameworks. Everything is plain PHP.
+  `autoload.php` using `spl_autoload_register` (PSR-4 style mapping `App\` -> `src/`), introduced at step 6.
+- No external libraries or frameworks. Everything is plain PHP: the `.env` loader (step 3) and the template
+  engine (step 10) are hand-written too.
+- `.env` is gitignored; `.env.example` is versioned. Never put connection values back into PHP code once step 3 is done.
 
 ## Commands
+
+See also `README.md` (French, for humans): purpose, rules, roadmap, current step. Keep its "État actuel"
+and roadmap in sync with this file when a step is completed.
 
 Requires PHP >= 8 with `pdo_sqlite` (bundled by default).
 
@@ -29,8 +34,12 @@ There is no test suite. Verify behaviour manually or with `curl` against the bui
 
 ## Student material
 
-`PLAN.md` is the Socratic guide handed to students: questions only, no solutions. Keep it that way. When a
-step changes, keep `PLAN.md` and the roadmap below consistent.
+- `PLAN.md`: Socratic guide handed to students, questions only, no solutions. Keep it that way.
+- `MVC.md`: reference diagrams (Mermaid + ASCII) of the target step-9 architecture and a full `POST /login`
+  trace with code excerpts. It contains solutions, so it is end-of-course / teacher material.
+
+When a step changes, keep `PLAN.md`, `MVC.md` and the roadmap below consistent. Code in `MVC.md` is the
+reference for naming (`App\Core\{Router,Request,Response,View,Database}`, `config/routes.php`, `views/layout.php`).
 
 ## Current step: classic PHP pages (step 1)
 
@@ -53,12 +62,14 @@ step by extracting shared includes unless the user asks to move to the next step
 |---|---|---|
 | 1 | Classic pages (done) | |
 | 2 | `includes/db.php`, `header.php`, `footer.php` | Reuse |
-| 3 | `views/` folder and a `render()` helper | View |
-| 4 | `User` and `UserRepository` classes | Model |
-| 5 | Hand-written `autoload.php`, then namespaces `App\...` mirrored in `src/` | Autoloading |
-| 6 | `public/index.php` front controller and router | Front controller |
-| 7 | `AuthController`, `HomeController` classes | Controller, constructor injection |
-| 8 | `src/Core/`: `Router`, `Request`, `Response`, `View` | Reusable core |
+| 3 | `.env` + `.env.example`, hand-written loader in `includes/env.php` | Config vs code, secrets out of VCS |
+| 4 | `views/` folder and a `render()` helper | View |
+| 5 | `User` and `UserRepository` classes | Model |
+| 6 | Hand-written `autoload.php`, then namespaces `App\...` mirrored in `src/` | Autoloading |
+| 7 | `public/index.php` front controller and router | Front controller |
+| 8 | `AuthController`, `HomeController` classes | Controller, constructor injection |
+| 9 | `src/Core/`: `Router`, `Request`, `Response`, `View`, `Database` (reads `.env`) | Reusable core |
+| 10 | `src/Core/Template.php`: `{{ }}` escaped output, loops, conditions, layout blocks, compiled to `cache/` | Templating |
 
 Each step must leave the site fully working (register, login, home, logout). When a step is completed,
 update the "Current step" section above to describe the new layout and how a request flows through it.
