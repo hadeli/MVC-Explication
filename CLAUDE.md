@@ -16,14 +16,26 @@ Comments and UI text are in French.
   engine (step 10) are hand-written too.
 - `.env` is gitignored; `.env.example` is versioned. Never put connection values back into PHP code once step 3 is done.
 
+## Two branches
+
+- **`master`** is what students get. Only `etapes/01-pages-classiques/` (and the root copy) contains code.
+  `etapes/02-*` to `etapes/13-*` hold **only** `README.md`: students write each step themselves inside that
+  folder, then run `./verifier.sh NN`. Never add code to those folders on `master`.
+- **`correction`** holds the thirteen complete, runnable step folders. All code work happens here:
+  `git switch correction`, change the step(s), run `verifier.sh`, commit. Then bring only the doc changes
+  (`README.md`, `PLAN.md`, `MVC.md`, `CLAUDE.md`, `verifier.sh`, `etapes/*/README.md`) to `master`,
+  e.g. `git switch master && git checkout correction -- PLAN.md etapes/11-interfaces/README.md`.
+  A change to the root pages or step 1 goes on both branches.
+
 ## Layout
 
 The root `index.php`, `login.php`, `register.php` are the students' starting point: an exact copy of
 `etapes/01-pages-classiques/`. Keep them identical to that folder (`diff` must be empty); never refactor them.
 
-Every step lives in its own complete, runnable folder under `etapes/NN-nom/` (01 to 13). Each folder has a
-short French `README.md` describing what changed from the previous step. Steps are built cumulatively:
-a change to an early step usually has to be propagated to all later steps.
+On `correction`, every step lives in its own complete, runnable folder under `etapes/NN-nom/` (01 to 13).
+Each folder has a French `README.md` (present on both branches) describing the problem, the mechanism, the
+pitfalls and the limits of the step, with code excerpts. Steps are built cumulatively: a change to an early
+step usually has to be propagated to all later steps.
 
 - Steps 01-06: pages at the folder root, run with `php -S localhost:8000` from the folder, URLs `/login.php` etc.
 - Steps 07-13: `public/` is the docroot, run with `php -S localhost:8000 -t public`, URLs `/login` etc.
@@ -50,14 +62,16 @@ Root-level docs: `README.md` (French, humans), `PLAN.md`, `MVC.md`, this file, a
 ## Commands
 
 ```bash
+git switch correction                                   # code lives here
 ./verifier.sh 05                                        # smoke-test one step (starts php -S, runs curl checks)
 for n in 01 02 03 04 05 06 07 08 09 10 11 12 13; do ./verifier.sh $n; done
 php -l etapes/09-noyau/src/Core/Router.php              # syntax check a file
 diff -r etapes/04-vues etapes/05-modele                 # see exactly what a step changed
 ```
 
-There is no PHPUnit. `verifier.sh` is the test suite: it must print `=> OK` for every step after any change.
-Run it against every step from the one you touched onward. Its output is sometimes truncated by the RTK
+There is no PHPUnit. `verifier.sh` is the test suite: on `correction` it must print `=> OK` for every step
+after any change. On `master` it passes for step 01 only and prints an explanatory message for a folder
+without PHP files. Run it against every step from the one you touched onward. Its output is sometimes truncated by the RTK
 proxy hook; redirect to a file and `cat` it if lines are missing.
 
 ## Student material
@@ -71,7 +85,7 @@ reference for naming (`App\Core\{Router,Request,Response,View,Database}`, `confi
 
 ## Current state
 
-All 13 steps are implemented and pass `verifier.sh`. Reference naming for steps 9-10 (namespaces mirror
+All 13 steps are implemented on `correction` and pass `verifier.sh` there. Reference naming for steps 9-10 (namespaces mirror
 `src/`): `App\Core\{Env,Database,Request,Response,View,Router,Template}`, `App\Controller\{AuthController,HomeController}`,
 `App\Model\{User,UserRepository}`, routes in `config/routes.php` as `[method, path, [class, action]]`,
 templates in `views/*.html` for step 10 (`views/*.php` + `views/layout.php` for step 9).

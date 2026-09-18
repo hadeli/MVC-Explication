@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 # Vérifie qu'une étape se comporte comme attendu : inscription, connexion, accueil connecté, déconnexion.
+# Fonctionne sur le code que l'élève écrit dans etapes/NN-nom/, et sur la branche « correction » qui contient tout.
 # Usage : ./verifier.sh 03      (numéro de l'étape, 01 à 13)
 set -u
 NUM="${1:?numero de l etape requis, ex: ./verifier.sh 04}"
 DOSSIER=$(ls -d "$(dirname "$0")"/etapes/"$NUM"-* 2>/dev/null | head -1)
 [ -d "$DOSSIER" ] || { echo "Étape $NUM introuvable"; exit 1; }
 DOSSIER=$(cd "$DOSSIER" && pwd)
+
+# Sur master, les dossiers 02 à 13 ne contiennent que le README : le code est à écrire par l'élève.
+if ! ls "$DOSSIER"/*.php >/dev/null 2>&1 && ! ls "$DOSSIER"/public/*.php >/dev/null 2>&1; then
+    echo "Étape $NUM : aucun fichier PHP dans $DOSSIER."
+    echo "  Écrivez le code de l'étape dans ce dossier (voir son README.md et PLAN.md), puis relancez."
+    echo "  La correction complète est sur la branche git « correction »."
+    exit 1
+fi
 PORT=${PORT:-8765}
 BASE="http://127.0.0.1:$PORT"
 TMP=$(mktemp -d)

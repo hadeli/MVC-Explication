@@ -1,2 +1,0 @@
-<?php
-render('home');

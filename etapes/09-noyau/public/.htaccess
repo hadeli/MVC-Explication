@@ -1,5 +1,0 @@
-# Apache : envoyer toute URL qui ne correspond pas à un fichier réel vers index.php.
-# (Le serveur intégré de PHP fait la même chose tout seul.)
-RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteRule ^ index.php [L]
