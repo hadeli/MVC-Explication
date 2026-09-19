@@ -1,0 +1,4 @@
+database.sqlite
+.idea/
+.env
+cache/
